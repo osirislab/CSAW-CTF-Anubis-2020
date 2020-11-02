@@ -1,7 +1,7 @@
 PERSISTENT_SERVICES := db traefik redis
-RESTART_ALWAYS_SERVICES := api web pipeline-api
-PUSH_SERVICES := api web
-BUILD_ALLWAYS := api web pipeline-api
+RESTART_ALWAYS_SERVICES := anubis-api anubis-web pipeline-api
+PUSH_SERVICES := anubis-api anubis-web
+BUILD_ALLWAYS := anubis-api anubis-web pipeline-api
 
 
 CURRENT_DIR := $(shell basename $$(pwd) | tr '[:upper:]' '[:lower:]')
@@ -55,7 +55,7 @@ yeetdb:
 	docker-compose kill db
 	docker-compose rm -f
 	docker volume rm anubis_db_data
-	docker-compose up -d --force-recreate db api
+	docker-compose up -d --force-recreate db anubis-api
 
 .PHONY: clean        # Clean up volumes, images and data
 clean:

@@ -20,10 +20,8 @@ fi
 
 
 pushd ..
-docker-compose build --parallel api web
+docker-compose build --parallel anubis-api anubis-web assignment-1
 popd
-
-../assignment/build.sh
 
 kubectl config set-context minikube
 if helm list -n anubis | grep anubis &> /dev/null; then

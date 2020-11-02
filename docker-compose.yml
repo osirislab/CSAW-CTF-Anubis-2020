@@ -28,7 +28,7 @@ services:
     labels:
       - "traefik.enable=false"
 
-  api:
+  anubis-api:
     image: anubis-api:latest
     build: ./api
     # restart: on-failure
@@ -90,7 +90,7 @@ services:
     labels:
       - "traefik.enable=false"
 
-  web:
+  anubis-web:
     image: anubis-web:latest
     build: ./web
     command: sh -c 'yarn && yarn run start'
@@ -136,6 +136,10 @@ services:
       - "redis_data:/data"
     labels:
       - "traefik.enable=false"
+
+  assignment-1:
+    image: assignment-1:latest
+    build: ./assignment
 
 volumes:
   traefik_data:
