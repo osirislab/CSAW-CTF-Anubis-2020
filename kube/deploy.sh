@@ -19,10 +19,19 @@ if ! minikube kubectl -- get secrets -n anubis | grep api &> /dev/null; then
              -n anubis
 fi
 
-
-
 pushd ..
-docker-compose build --parallel api web
+if [ -f anubis-api.tar ]; then
+    docker tag $(docker import anubis-api.tar) anubis-api
+else
+    docker-compose build api
+    docker save anubis-api > anubis-api.tar
+fi
+if [ -f anubis-web.tar ]; then
+    docker tag $(docker import anubis-web.tar) anubis-web
+else
+    docker-compose build web
+    docker save anubis-web > anubis-web.tar
+fi
 popd
 
 ../assignment/build.sh
