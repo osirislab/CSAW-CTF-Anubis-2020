@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DOMAIN="autograder.csaw.io"
+DOMAIN="autograder.chal.csaw.io"
 
 set -e
 cd $(dirname $(realpath $0))
