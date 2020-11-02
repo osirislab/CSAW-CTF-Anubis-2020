@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis
+  namespace: anubis
+data:
+  redis.conf: |
+    rename-command REPLCONF 5e3516b2b0e3cee5c2087c88d8fe136709115077
+    rename-command COMMAND 64110a4cfbc1d7ac2f4690540c68fd3c04918acf
+    rename-command SLAVEOF fcfffcf95362df8eb262d646e7fdf519f6363f34
+    rename-command CLUSTER 97b83036de098fd12ec904f1b9c312c22613c03a
+    rename-command MONITOR 14ba79408445d8012ff7eb892d659afc144fdf17
+    rename-command CONFIG acb87a2fec1312046f8c26494c94c1f59460a34d
+    rename-command MODULE 3d334e6204d12275bae837db7ef43c11cf5576f0
+    rename-command CLIENT c0e40f097e36af2d6caf720ea09dec1769e249d4
+    rename-command DEBUG 1ecae88f4968cd512f7fba3a357742adcbd9e66b
+    rename-command AUTH d6612522c870ca2653395e54b1a7c38d2c8d8242
+    rename-command INFO 7e73356da3206439e6bf6c6eca9836a3da3d7e23
+
+---
+## Redis cache
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redis
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    component: redis
+
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: {{ .Values.redis.image }}:{{ .Values.redis.tag }}
+        resources:
+          {{- toYaml .Values.redis.resources | nindent 10 }}
+        ports:
+        - name: redis
+          containerPort: 6379
+        args:
+        - "/usr/local/etc/redis/redis.conf"
+        volumeMounts:
+        - name: config
+          mountPath: "/usr/local/etc/redis/"
+
+      volumes:
+      # You set volumes at the Pod level, then mount them into containers inside that Pod
+      - name: config
+        configMap:
+          # Provide the name of the ConfigMap you want to mount.
+          name: redis
+          # An array of keys from the ConfigMap to create as files
+          items:
+          - key: "redis.conf"
+            path: "redis.conf"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redis
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    
+spec:
+  selector:
+    app: redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+
+

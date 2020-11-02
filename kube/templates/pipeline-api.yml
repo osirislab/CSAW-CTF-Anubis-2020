@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anubis-pipeline-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: anubis-pipeline-api
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    component: anubis-pipline-api
+
+spec:
+  selector:
+    matchLabels:
+      app: anubis-pipeline-api
+  replicas: {{ .Values.pipeline_api.replicas }}
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 0
+  template:
+    metadata:
+      labels:
+        app: anubis-pipeline-api
+    spec:
+      dnsPolicy: ClusterFirst
+      containers:
+      - name: anubis-pipeline-api
+        image: {{ .Values.api.image }}:{{ .Values.api.tag }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        #resources:
+        #  { {- toYaml .Values.api.resources | nindent 10 } }
+        ports:
+        - name: web
+          containerPort: 5000
+        env:
+        # - name: "DEBUG"
+        #   value: {{- if .Values.debug }} "1"{{- else }} "0"{{- end }}
+        - name: "LOGGER_NAME"
+          value: "pipeline-api"
+        # Gunicorn workers
+        - name: "WORKERS"
+          value: {{ .Values.pipeline_api.workers | quote }}
+        - name: "CREATE_APP_FUNCTION"
+          value: "create_pipeline_app"
+        - name: "SECRET_KEY"
+          valueFrom:
+            secretKeyRef:
+              name: api
+              key: secret-key
+        - name: DB_HOST
+          value: mariadb.mariadb.svc.cluster.local
+        # sqlalchemy uri
+        - name: "DATABASE_URI"
+          valueFrom:
+            secretKeyRef:
+              name: api
+              key: database-uri
+        {{- if .Values.pipeline_api.healthCheck }}
+        livenessProbe:
+          exec:
+            command:
+              - curl
+              - http://localhost:5000/
+          initialDelaySeconds: 120
+          periodSeconds: 5
+        {{- end }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: anubis-pipeline-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: anubis-pipeline-api
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+
+spec:
+  selector:
+    app: anubis-pipeline-api
+  ports:
+  - name: web
+    port: 5000
+    targetPort: 5000
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: submission-pipeline-worker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+spec:
+  podSelector:
+    matchLabels:
+      role: submission-pipeline-worker
+  policyTypes:
+  - Ingress
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          networking/namespace: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+
+    # Pipeline API
+    - podSelector:
+        matchLabels:
+          app: anubis-pipeline-api
+
+    # redis
+    - podSelector:
+        matchLabels:
+          app: redis
+
+    ports:
+      - protocol: TCP
+        port: 5000
+      - protocol: TCP
+        port: 6379
+      - protocol: TCP
+        port: 53
+      - protocol: UDP
+        port: 53

@@ -1,0 +1,17 @@
+flask
+flask-sqlalchemy
+pymysql
+gunicorn
+gunicorn[gevent]
+redis
+rq
+docker
+pytz
+python-dateutil
+Flask-Caching
+flask-oauthlib
+python-magic
+sqlalchemy-json
+pyjwt
+kubernetes
+

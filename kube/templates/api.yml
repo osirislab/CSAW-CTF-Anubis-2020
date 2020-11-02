@@ -1,0 +1,163 @@
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: anubis-seed
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: anubis-seed
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    component: anubis-seed
+spec:
+  template:
+    spec:
+      containers:
+      - name: anubis-seed
+        image: {{ .Values.api.image }}:{{ .Values.api.tag }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        env:
+        - name: SEED
+          value: "1"
+        - name: DB_HOST
+          value: mariadb.mariadb.svc.cluster.local
+        - name: "DATABASE_URI"
+          valueFrom:
+            secretKeyRef:
+              name: api
+              key: database-uri
+      restartPolicy: Never
+
+--- 
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anubis-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: anubis-api
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    component: anubis-api
+spec:
+  selector:
+    matchLabels:
+      app: anubis-api
+  replicas: {{ .Values.api.replicas }}
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 0
+  template:
+    metadata:
+      labels:
+        app: anubis-api
+    spec:
+      containers:
+      - name: anubis-api
+        image: {{ .Values.api.image }}:{{ .Values.api.tag }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        ports:
+        - name: web
+          containerPort: 5000
+        resources:
+         {{- toYaml .Values.api.resources | nindent 10 }}
+        env:
+        - name: "DEBUG"
+          value: {{- if .Values.debug }} "1"{{- else }} "0"{{- end }}
+        - name: "DISABLE_ELK"
+          value: "0"
+        # Gunicorn workers
+        - name: "WORKERS"
+          value: {{ .Values.api.workers | quote }}
+        {{- if .Values.api.gunicorn_options }}
+        - name: "GUNICORN_OPTIONS"
+          value: {{ .Values.api.gunicorn_options }}
+        {{- end }}
+        - name: "SECRET_KEY"
+          valueFrom:
+            secretKeyRef:
+              name: api
+              key: secret-key
+        - name: DB_HOST
+          value: mariadb.mariadb.svc.cluster.local
+        # sqlalchemy uri
+        - name: "DATABASE_URI"
+          valueFrom:
+            secretKeyRef:
+              name: api
+              key: database-uri
+        {{- if .Values.api.healthCheck }}
+        livenessProbe:
+          exec:
+            command:
+              - curl
+              - http://localhost:5000/
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        {{- end }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: anubis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: anubis-api
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+spec:
+  type: NodePort
+  selector:
+    app: anubis-api
+  ports:
+  - name: web
+    port: 5000
+    targetPort: 5000
+
+---
+# Strip prefix /api
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: anubis
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+spec:
+  stripPrefix:
+    prefixes:
+      - "/api"
+
+---
+# Public Ingress Route /api/public/*
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ingress.route.anubis.api.public
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: anubis-api
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+  - kind: Rule
+    match: Host(`{{ .Values.domain }}`) && PathPrefix(`/api/public`)
+    middlewares:
+    {{- if .Values.vpnOnly }}
+    - name: whitelist-vpn
+      namespace: traefik
+    {{- end }}
+    - name: strip-api
+      namespace: {{ .Release.Namespace }}
+    services:
+    - name: anubis
+      port: 5000
+  tls:
+    certResolver: tls

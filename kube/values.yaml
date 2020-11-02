@@ -1,0 +1,53 @@
+
+debug: false
+rollingUpdates: true
+healthChecks: true
+domain: "anubis.osiris.services"
+vpnOnly: false
+imagePullPolicy: "Always"
+
+api:
+  replicas: 3
+  workers: 4
+
+  healthCheck: true
+  gunicorn_options: "--capture-output --enable-stdio-inheritance --preload --timeout 30"
+
+  image: "anubis-api"
+  tag: "latest"
+  resources:
+    requests:
+      memory: "500Mi"
+
+pipeline_api:
+  replicas: 2
+  workers: 2
+
+  healthCheck: true
+
+  resources:
+    limits:
+      memory: "500Mi"
+    requests:
+      memory: "500Mi"
+
+web:
+  replicas: 2
+  image: "anubis-web"
+  tag: "latest"
+
+redis:
+  image: "redis"
+  tag: "6"
+
+  resources:
+    limits:
+      memory: "1Gi"
+    requests:
+      memory: "1Gi"
+
+rpc_workers:
+  replicas: 2
+
+
+

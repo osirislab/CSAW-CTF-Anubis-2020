@@ -1,0 +1,18 @@
+assignment:
+  name: "Linked Lists"
+  class: "Kubernetes 101"
+  hidden: false
+
+  # Don't change these!
+  unique_code: "ec72c90a"
+  pipeline_image: "assignment-1:latest"
+
+  # Specify the important dates here
+  date:
+    release: "2020-11-13 00:00:00"
+    due: "2020-11-16 23:09:13"
+    grace: "2020-11-16 23:09:13"
+
+  # This description will be shown to the user on the Anubis website.
+  description: |
+    Merge, sort and two linked lists.

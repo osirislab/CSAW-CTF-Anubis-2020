@@ -1,0 +1,44 @@
+# Source: Anubis/templates/pipeline-api.yml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: submission-pipeline-worker
+  namespace: anubis
+  labels:
+    heritage: "Helm"
+    release: "anubis"
+spec:
+  podSelector:
+    matchLabels:
+      role: submission-pipeline-worker
+  policyTypes:
+  - Ingress
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          networking/namespace: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+
+    # Pipeline API
+    - podSelector:
+        matchLabels:
+          app: anubis-pipeline-api
+
+    # redis
+    - podSelector:
+        matchLabels:
+          app: redis
+
+    ports:
+      - protocol: TCP
+        port: 5000
+      - protocol: TCP
+        port: 6379
+      - protocol: TCP
+        port: 53
+      - protocol: UDP
+        port: 53

@@ -1,0 +1,143 @@
+version: '3.7'
+
+services:
+  traefik:
+    image: "traefik:v2.2"
+    # restart: on-failure
+    command:
+      - "--api.insecure=true"
+
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+
+      - "--entrypoints.http.address=:80"
+      - "--entrypoints.https.address=:443"
+      - "--entrypoints.http.http.redirections.entryPoint.to=https"
+      - "--entrypoints.http.http.redirections.entryPoint.scheme=https"
+
+      - "--certificatesresolvers.tls.acme.httpchallenge=true"
+      - "--certificatesresolvers.tls.acme.httpchallenge.entrypoint=http"
+      - "--certificatesresolvers.tls.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.tls.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "traefik_data:/letsencrypt"
+    labels:
+      - "traefik.enable=false"
+
+  api:
+    image: anubis-api:latest
+    build: ./api
+    # restart: on-failure
+    command: sh -c "while true; do python3 dev.py; sleep 1; done"
+    environment:
+      - "DEBUG=1"
+      - "DB_HOST=db"
+    ports:
+      - 127.0.0.1:5000:5000
+    # volumes:
+    #   - "./api:/opt/app"
+    labels:
+      - "traefik.enable=true"
+
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${AUTH}"
+      - "traefik.http.middlewares.traefik-auth.basicauth.removeheader=true"
+
+      - "traefik.http.services.api.loadbalancer.server.port=5000"
+      - "traefik.http.middlewares.strip-api.stripprefix.prefixes=/api"
+
+      # private route with auth
+      - "traefik.http.routers.api-private.rule=Host(`localhost`) && PathPrefix(`/api/private/`)"
+      - "traefik.http.routers.api-private.entrypoints=https"
+      - "traefik.http.routers.api-private.tls.certresolver=tls"
+      - "traefik.http.middlewares.api-private.redirectscheme.scheme=https"
+      - "traefik.http.routers.api-private.middlewares=strip-api@docker"
+
+      # Public router without auth
+      - "traefik.http.routers.api-public.rule=Host(`localhost`) && PathPrefix(`/api/public`)"
+      - "traefik.http.routers.api-public.entrypoints=https"
+      - "traefik.http.routers.api-public.tls.certresolver=tls"
+      - "traefik.http.middlewares.api-public.redirectscheme.scheme=https"
+      - "traefik.http.routers.api-public.middlewares=strip-api@docker"
+
+  pipeline-api:
+    build: ./api
+    # restart: on-failure
+    environment:
+      - "DEBUG=1"
+      - "DB_HOST=db"
+      - "CREATE_APP_FUNCTION=create_pipeline_app"
+      - "GUNICORN_OPTIONS=--reload"
+    ports:
+      - 127.0.0.1:5004:5004
+    volumes:
+      - "./api:/opt/app"
+    labels:
+      - "traefik.enable=false"
+
+  rpc-worker:
+    build: ./api
+    # restart: on-failure
+    command: "rq worker -u redis://redis"
+    environment:
+      - "DEBUG=1"
+      - "DB_HOST=db"
+    volumes:
+      - "./api:/opt/app"
+    labels:
+      - "traefik.enable=false"
+
+  web:
+    image: anubis-web:latest
+    build: ./web
+    command: sh -c 'yarn && yarn run start'
+    environment:
+      NODE_ENV: development
+      REACT_APP_DEV: dev
+    volumes:
+      - ./web:/opt/app
+    ports:
+      - 127.0.0.1:3000:3000
+    # restart: on-failure
+    labels:
+      - "traefik.enable=true"
+
+      - "traefik.http.services.web.loadbalancer.server.port=3000"
+
+      - "traefik.http.routers.web-public.rule=Host(`localhost`)"
+      - "traefik.http.routers.web-public.entrypoints=https"
+      - "traefik.http.routers.web-public.tls.certresolver=tls"
+
+  db:
+    image: mariadb:10.5.5
+    # restart: on-failure
+    dns: [8.8.8.8]
+    ports:
+      - "127.0.0.1:3306:3306"
+    environment:
+      - "MYSQL_ROOT_PASSWORD=anubis"
+      - "MYSQL_DATABASE=anubis"
+      - "MYSQL_USER=anubis"
+      - "MYSQL_PASSWORD=anubis"
+    volumes:
+      - "db_data:/var/lib/mysql"
+    labels:
+      - "traefik.enable=false"
+
+  redis:
+    image: redis:5
+    # restart: on-failure
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - "redis_data:/data"
+    labels:
+      - "traefik.enable=false"
+
+volumes:
+  traefik_data:
+  redis_data:
+  db_data:
