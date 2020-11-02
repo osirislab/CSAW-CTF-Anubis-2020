@@ -46,7 +46,7 @@ helm install mariadb \
      --namespace mariadb \
      bitnami/mariadb
 
-if ! kubectl get secret -n Anubis flag &> /dev/null; then
+if ! kubectl get secret -n anubis flag &> /dev/null; then
     kubectl create ns anubis
     kubectl create secret generic flag -n anubis --from-literal=flag='flag{memenetes_b6ce000dd1}'
 fi
