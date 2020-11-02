@@ -19,19 +19,9 @@ if ! minikube kubectl -- get secrets -n anubis | grep api &> /dev/null; then
              -n anubis
 fi
 
-cache_build() {
-    if [ -f "${1}".tar ]; then
-        docker tag $(docker import "${1}".tar) "${1}"
-    else
-        docker-compose build "${1}"
-        docker save "${1}" > "${1}".tar
-    fi
-}
 
 pushd ..
-cache_build anubis-api
-cache_build anubis-web
-cache_build assignment-1
+docker-compose build --parallel anubis-api anubis-web assignment-1
 popd
 
 
