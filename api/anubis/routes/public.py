@@ -232,7 +232,7 @@ def public_submissions():
 @public.route('/submission/<string:submission_id>')
 @require_user
 @json_response
-@cache.memoize(timeout=1, unless=is_debug)
+#@cache.memoize(timeout=1, unless=is_debug)
 def public_submission(submission_id: str):
     """
     Get submission data for a given commit.

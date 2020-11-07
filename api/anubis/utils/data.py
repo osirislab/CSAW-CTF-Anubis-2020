@@ -23,7 +23,7 @@ def is_debug() -> bool:
     return config.DEBUG
 
 
-@cache.memoize(timeout=60, unless=is_debug)
+#@cache.memoize(timeout=60, unless=is_debug)
 def get_classes(netid: str):
     """
     Get all classes a given netid is in
@@ -40,7 +40,7 @@ def get_classes(netid: str):
     return [c.data for c in classes]
 
 
-@cache.memoize(timeout=60, unless=is_debug)
+#@cache.memoize(timeout=60, unless=is_debug)
 def get_assignments(netid: str, class_name=None) -> Union[List[Dict[str, str]], None]:
     """
     Get all the current assignments for a netid. Optionally specify a class_name
@@ -77,7 +77,7 @@ def get_assignments(netid: str, class_name=None) -> Union[List[Dict[str, str]], 
     return a
 
 
-@cache.memoize(timeout=3, unless=is_debug)
+#@cache.memoize(timeout=3, unless=is_debug)
 def get_submissions(netid: str, class_name=None, assignment_name=None) -> Union[List[Dict[str, str]], None]:
     """
     Get all submissions for a given netid. Cache the results. Optionally specify
