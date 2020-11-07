@@ -13,7 +13,7 @@ RUN apk add --update --no-cache mariadb-client git curl tzdata gcc py3-gevent \
 
 
 COPY . .
-RUN chown -R root:root . && chmod +x docker-entrypoint.sh
+RUN chown -R root:root . && chmod ug-w -R . && chmod +x docker-entrypoint.sh
 
 USER anubis
 ENTRYPOINT /opt/app/docker-entrypoint.sh

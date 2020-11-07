@@ -14,7 +14,7 @@ if ! minikube status | grep 'kubelet: Running' &> /dev/null; then
              --network-plugin=cni \
              --cni=calico \
              --cpus=$(( $(nproc) - 2 )) \
-             --memory=$(free -m | grep mem -i | awk '{print ($2)-2000}')
+             --memory=16000
     sleep 1
 fi
 
