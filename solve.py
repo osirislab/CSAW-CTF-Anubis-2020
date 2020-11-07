@@ -1,7 +1,7 @@
 import sys, base64, requests, random, string, urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-domain = 'localhost'
+domain = 'autograder.chal.csaw.io'
 
 redisrce=b"""
 import redis, datetime, pickle, zlib
